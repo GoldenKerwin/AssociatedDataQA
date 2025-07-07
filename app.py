@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from neo_db.query_graph import query,get_KGQA_answer,get_answer_profile
-from KGQA.ltp import get_target_array
+from KGQA.spacy_qa import get_target_array
 app = Flask(__name__)
 
 
@@ -28,8 +28,24 @@ def get_profile():
 @app.route('/KGQA_answer', methods=['GET', 'POST'])
 def KGQA_answer():
     question = request.args.get('name')
-    json_data = get_KGQA_answer(get_target_array(str(question)))
-    return jsonify(json_data)
+    extracted_info = get_target_array(str(question))
+    
+    # 如果成功提取到信息
+    if extracted_info:
+        try:
+            # 调用图数据库查询函数，获取答案
+            json_data = get_KGQA_answer(extracted_info)
+            return jsonify(json_data)
+        except Exception as e:
+            # 如果查询出错，返回通用错误信息
+            return jsonify([{"data": [], "links": []}, f"<p>查询出错: {e}</p>", ""])
+    
+    # 如果无法从问题中提取实体和关系
+    else:
+        # 返回友好的提示信息
+        error_msg = "<p>抱歉，无法准确解析您的问题。</p><p>请尝试提问，如：\"贾宝玉的父亲是谁？\"</p>"
+        empty_data = {"data": [], "links": []}
+        return jsonify([empty_data, error_msg, ""])
 @app.route('/search_name', methods=['GET', 'POST'])
 def search_name():
     name = request.args.get('name')
