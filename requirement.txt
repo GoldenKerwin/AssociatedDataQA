@@ -2,3 +2,5 @@ flask
 py2neo
 spacy
 bs4
+numpy==1.26.4 
+h5py==3.11.0

@@ -70,37 +70,28 @@
             <div id="content-container">
                 <!--Page content-->
                 <div id="page-content">
-                    <h4 class="text-main pad-btm bord-btm">智能问答系统</h4>
-                    
+                    <h4 class="text-main pad-btm bord-btm">问答系统</h4>
                     <div class="row">
-                        <div class="col-md-8">
-                            <div class="alert alert-info">
-                                <i class="fa fa-info-circle"></i> 您可以输入关于《红楼梦》人物关系的问题，例如"贾宝玉的爸爸是谁？"、"林黛玉和贾宝玉是什么关系？"
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-lg-6">
                             <div class="input-group">
-                                <input type="text" id="search" class="form-control input-lg" placeholder="请输入你的问题...">
+                                <input type="text" id="search" class="form-control input-lg" placeholder="请输入你的问题(eg.贾宝玉的爸爸是谁？)">
                                 <span class="input-group-addon btn btn-primary" onclick="search()">搜索</span>
                             </div>
                         </div>
                     </div>
-                    
+                    <div class="row" style="height: 40px;"></div>
                     <div class="row">
-                        <div class="col-md-8">
-                            <div id="guanxi"></div>
+                        <div class="col-lg-6" style="height: 400px;" id="guanxi">
                         </div>
-                        <div class="col-md-4">
-                            <div class="character-info-box">
-                                <div class="text-center mb-3">
-                                    <img id="picture" style="display:none;max-width:100%;height:auto;max-height:240px;border-radius:5px;" src="">
-                                </div>
+                        <div class="col-lg-1"></div>
+                        <div class="col-lg-4">
+                            <div class="row" style="width:200px;height:200px;">
+                                <img id="picture" style="display:none;width:200px;height:200px;" src="">
+                            </div>
+                            <div class="row">
                                 <div class="basic-info">
                                     <dl class="basicInfo-block basicInfo-left" id="answer">
-                                        <div class="placeholder-text text-center">
-                                            <i class="fa fa-comment-o fa-4x text-muted"></i>
-                                            <p class="mt-3 text-muted">请在上方输入问题进行查询</p>
-                                        </div>
+                                        <!-- 问答结果将显示在这里 -->
                                     </dl>
                                 </div>
                             </div>
@@ -133,9 +124,13 @@
         var myChart = echarts.init(document.getElementById("guanxi"));
         myChart.showLoading();
         
-        var option = {
+        myChart.hideLoading();
+        option = {
+            // backgroundColor: "white",
             title: {
+                // text: '红楼梦人物关系图',
                 textStyle: {
+                    // color: "white",
                     fontWeight: "lighter",
                 }
             },
@@ -150,7 +145,7 @@
                 {
                     type: 'graph',
                     layout: 'force',
-                    symbolSize: 60,  // 默认节点大小
+                    symbolSize: 50,
                     edgeSymbol: ['circle', 'arrow'],
                     edgeSymbolSize: [4, 4],
                     edgeLabel: {
@@ -164,8 +159,7 @@
                     },
                     force: {
                         repulsion: 2500,
-                        edgeLength: [10, 100],
-                        layoutAnimation: true
+                        edgeLength: [10, 100]
                     },
                     focusNodeAdjacency: true,
                     draggable: true,
@@ -192,42 +186,43 @@
                         normal: {
                             show: true,
                             textStyle: {
-                                fontSize: 12
+                                fontSize: 10
                             },
-                            position: 'right'
                         }
                     },
+                    force: {
+                        repulsion: 1000
+                    },
                     tooltip: {
-                        formatter: function (node) {
+                        formatter: function (node) { // 区分连线和节点，节点上额外显示其他数字
                             if (!node.value) {
                                 return node.data.name;
                             } else {
-                                return node.data.name + ":" + node.value;
+                                return node.data.name + ":" + node.data.showNum;
                             }
                         },
                     },
                     lineStyle: {
                         normal: {
                             opacity: 0.9,
-                            width: 1.5,
+                            width: 1,
                             curveness: 0.3
                         }
                     },
-                    data: [],
-                    links: []
+                    nodes: [],
+                    links: [],
                 }
             ]
         };
         
         myChart.setOption(option);
-        myChart.hideLoading();
         
         // 点击节点显示人物信息
         myChart.on('click', function (params) {
             if (params.dataType === 'node') {
                 var name = params.data.name;
                 if (name.search('\n') != -1)
-                    name = name.replace('\n', '');
+                    name = name.replace('\n', '')
                 $.getJSON('/get_profile', {
                     character_name: name,
                 }, function (data) {
@@ -240,78 +235,32 @@
         
         // 搜索问题的函数
         function search() {
-            var name = $("#search").val();
+            var name = $("#search").val()
             if (name == '') {
-                alert("请输入问题！");
+                alert("请输入问题！")
                 return;
             }
-            
-            // 清空旧的数据，显示加载中状态
-            myChart.showLoading();
-            $("#answer").html("<div class='text-center'><i class='fa fa-spinner fa-spin fa-2x'></i><p class='mt-2'>正在查询中...</p></div>");
-            $("#picture").css("display", "none");
-            
-            // 重置图表数据
-            option.series[0].data = [];
-            option.series[0].links = [];
-            myChart.setOption(option, true);
             
             $.getJSON('/KGQA_answer', {
                 name: name,
             }, function (data) {
-                // 停止加载动画
-                myChart.hideLoading();
+                var graph = data[0];
+                graph.nodes.forEach(function (node) {
+                    node.symbolSize = 60;
+                });
                 
-                // 判断是否有数据返回
-                if (data && data.length >= 3) {
-                    // 更新关系图
-                    var graph = data[0];
-                    
-                    if (graph && graph.data && graph.links && graph.data.length > 0) {
-                        // 设置图表数据
-                        option.series[0].data = graph.data;
-                        option.series[0].links = graph.links;
-                        
-                        // 应用新选项
-                        myChart.setOption(option, true);
-                        
-                        // 强制刷新图表
-                        setTimeout(function() {
-                            myChart.resize();
-                        }, 100);
-                    } else {
-                        // 如果没有图数据，清空图表
-                        option.series[0].data = [];
-                        option.series[0].links = [];
-                        myChart.setOption(option, true);
-                    }
-                    
-                    // 更新文字答案
-                    if (data[1]) {
-                        $("#answer").html(data[1]);
-                    } else {
-                        $("#answer").html("<div class='alert alert-warning'><i class='fa fa-exclamation-triangle'></i> 未找到相关信息</div>");
-                    }
-                    
-                    // 更新图片
-                    if (data[2]) {
-                        $("#picture").css("display", "block");
-                        $("#picture").attr("src", "data:image/jpg;base64," + data[2]);
-                    } else {
-                        $("#picture").css("display", "none");
-                    }
+                option.series[0].nodes = graph.nodes;
+                option.series[0].links = graph.links;
+                myChart.setOption(option, true);
+                
+                $("#answer").html(data[1]);
+                
+                if (data[2]) {
+                    $("#picture").css("display", "block");
+                    $("#picture").attr("src", "data:image/jpg;base64," + data[2]);
                 } else {
-                    // 数据格式错误处理
-                    $("#answer").html("<div class='alert alert-danger'><i class='fa fa-times-circle'></i> 查询结果格式有误，请重试</div>");
-                    option.series[0].data = [];
-                    option.series[0].links = [];
-                    myChart.setOption(option, true);
+                    $("#picture").css("display", "none");
                 }
-            }).fail(function(jqXHR, textStatus, errorThrown) {
-                // AJAX 请求失败处理
-                myChart.hideLoading();
-                $("#answer").html("<div class='alert alert-danger'><i class='fa fa-times-circle'></i> 查询失败，请重试<br><small>错误: " + textStatus + "</small></div>");
-                console.error("AJAX 请求失败:", textStatus, errorThrown);
             });
         }
     </script>

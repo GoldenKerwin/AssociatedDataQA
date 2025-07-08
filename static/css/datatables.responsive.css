@@ -1,4 +1,4 @@
-﻿table.dataTable.dtr-inline.collapsed tbody td:first-child,
+table.dataTable.dtr-inline.collapsed tbody td:first-child,
 table.dataTable.dtr-inline.collapsed tbody th:first-child {
   position: relative;
   padding-left: 30px;
